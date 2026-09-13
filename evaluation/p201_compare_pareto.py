@@ -4,12 +4,12 @@
 Compare system performance using Pareto fronts and relative comparisons.
 
 This script extends p200_compare_compute.py by:
-1. Computing and displaying Pareto front lines instead of all data points for Polytris
+1. Computing and displaying Pareto front lines instead of all data points for Tetris
 2. Adding visualizations showing speedup ratios at each comparison-system
-   Pareto point (x = that system's accuracy; y = Polytris speedup under a
+   Pareto point (x = that system's accuracy; y = Tetris speedup under a
    higher-accuracy pairing rule)
 3. Adding visualizations showing accuracy gains at each comparison-system
-   Pareto point (x = anchor throughput in FPS when frame counts exist; y = Polytris HOTA gain
+   Pareto point (x = anchor throughput in FPS when frame counts exist; y = Tetris HOTA gain
    under a higher-throughput pairing rule)
 """
 
@@ -98,9 +98,9 @@ ABLATION_SYSTEM_LABELS = [
     if condition.name != 'full'
 ]
 
-PRESENTATION_SYSTEM_LABEL_MAP = {
-    'Polytris': 'Tetris',
-}
+# Chart ``system`` values already use the published system name; keep the hook
+# for any presentation-only relabeling.
+PRESENTATION_SYSTEM_LABEL_MAP: dict[str, str] = {}
 PRESENTATION_SYSTEM_ORDER = [
     'Tetris',
     'Reference',
@@ -744,7 +744,7 @@ def create_speedup_chart(df_speedup: pd.DataFrame, accuracy_col_name: str, *,
     return _facet_chart(
         chart,
         df_plot,
-        f'Speedup Ratio at {accuracy_col_name} Scores (>1 = Polytris faster)',
+        f'Speedup Ratio at {accuracy_col_name} Scores (>1 = Tetris faster)',
         single_row=single_row,
         apply_padding=apply_padding,
         apply_legend_config=apply_legend_config,
@@ -869,7 +869,7 @@ def create_accuracy_gain_chart(df_accuracy_gain: pd.DataFrame, accuracy_col_name
     return _facet_chart(
         chart,
         df_plot,
-        f'{accuracy_col_name} Gain at Throughput (>0 = Polytris more accurate)',
+        f'{accuracy_col_name} Gain at Throughput (>0 = Tetris more accurate)',
         single_row=single_row,
         apply_padding=apply_padding,
         apply_legend_config=apply_legend_config,
@@ -964,7 +964,7 @@ def create_pareto_comparison_chart(df_combined: pd.DataFrame, accuracy_col: str,
                 scale=alt.Scale(domain=[0, 1])),
         color=alt.Color(f'{system_col}:N', scale=color_scale, legend=legend),
         # Group lines by the columns that define a single Pareto front.
-        # Polytris fronts are computed per (dataset, classifier, canvas_scale);
+        # Tetris fronts are computed per (dataset, classifier, canvas_scale);
         # SOTA fronts are computed per (dataset).  The chart is already faceted
         # by dataset, so only system/classifier/canvas_scale are needed here.
         # Including varying parameters (sample_rate, tilepadding, etc.) would
@@ -976,7 +976,7 @@ def create_pareto_comparison_chart(df_combined: pd.DataFrame, accuracy_col: str,
 
     # Shape scale domain must match color domain for legend merge (same ordering).
     shape_range = [
-        'diamond' if s.startswith('Polytris') or s == 'Tetris' else ('triangle' if s == 'Reference' else 'circle')
+        'diamond' if s.startswith('Tetris') else ('triangle' if s == 'Reference' else 'circle')
         for s in ordered_systems
     ]
     shape_scale = alt.Scale(domain=ordered_systems, range=shape_range)

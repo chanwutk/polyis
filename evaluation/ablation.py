@@ -17,7 +17,7 @@ class AblationCondition:
 
     # Internal identifier (e.g. 'no_sampling').
     name: str
-    # Display label for chart legends (e.g. 'Polytris (-Sampling)').
+    # Display label for chart legends (e.g. 'Tetris (-Sampling)').
     label: str
     # Allowed sample_rate values, or None to keep all configured rates.
     sample_rates: list[int] | None
@@ -28,9 +28,9 @@ class AblationCondition:
 
 # Ordered list: full system -> incrementally disable optimizations.
 ABLATION_CONDITIONS: list[AblationCondition] = [
-    AblationCondition('full',        'Polytris',                        None, None),
-    AblationCondition('no_sampling', 'Polytris (-Sampling)',            [1],  None),
-    AblationCondition('no_both',     'Polytris (-Sampling, -Pruning)',  [1],  [None]),
+    AblationCondition('full',        'Tetris',                      None, None),
+    AblationCondition('no_sampling', 'Tetris (-Sampling)',          [1],  None),
+    AblationCondition('no_both',     'Tetris (-Sampling, -Pruning)', [1],  [None]),
 ]
 
 

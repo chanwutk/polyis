@@ -140,4 +140,4 @@ class TestAblationConditionsOrdering:
 
     def test_condition_labels(self):
         labels = [c.label for c in ABLATION_CONDITIONS]
-        assert labels == ['Polytris', 'Polytris (-Sampling)', 'Polytris (-Sampling, -Pruning)']
+        assert labels == ['Tetris', 'Tetris (-Sampling)', 'Tetris (-Sampling, -Pruning)']

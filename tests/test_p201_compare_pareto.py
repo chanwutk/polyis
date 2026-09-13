@@ -45,7 +45,7 @@ from evaluation.p201_compare_pareto import (
                 ]),
                 'HOTA',
             ),
-            'Speedup Ratio at HOTA Scores (>1 = Polytris faster)',
+            'Speedup Ratio at HOTA Scores (>1 = Tetris faster)',
         ),
         (
             create_accuracy_gain_chart(
@@ -73,13 +73,13 @@ from evaluation.p201_compare_pareto import (
                 ]),
                 'HOTA',
             ),
-            'HOTA Gain at Throughput (>0 = Polytris more accurate)',
+            'HOTA Gain at Throughput (>0 = Tetris more accurate)',
         ),
         (
             create_pareto_comparison_chart(
                 pd.DataFrame([
                     {
-                        'system': 'Polytris',
+                        'system': 'Tetris',
                         'dataset': 'demo',
                         'classifier': 'ShuffleNet05',
                         'sample_rate': 1,
@@ -91,7 +91,7 @@ from evaluation.p201_compare_pareto import (
                         'HOTA_HOTA': 0.80,
                     },
                     {
-                        'system': 'Polytris',
+                        'system': 'Tetris',
                         'dataset': 'demo',
                         'classifier': 'ShuffleNet05',
                         'sample_rate': 1,
@@ -112,7 +112,7 @@ from evaluation.p201_compare_pareto import (
             create_pareto_comparison_chart(
                 pd.DataFrame([
                     {
-                        'system': 'Polytris',
+                        'system': 'Tetris',
                         'dataset': 'demo',
                         'classifier': 'ShuffleNet05',
                         'sample_rate': 1,
@@ -124,7 +124,7 @@ from evaluation.p201_compare_pareto import (
                         'HOTA_HOTA': 0.80,
                     },
                     {
-                        'system': 'Polytris',
+                        'system': 'Tetris',
                         'dataset': 'demo',
                         'classifier': 'ShuffleNet05',
                         'sample_rate': 1,
@@ -213,7 +213,7 @@ def test_throughput_chart_uses_custom_x_title():
     # Verify that passing x_title propagates to the x-axis encoding.
     df = pd.DataFrame([
         {
-            'system': 'Polytris',
+            'system': 'Tetris',
             'dataset': 'demo',
             'classifier': 'ShuffleNet05',
             'sample_rate': 1,
@@ -225,7 +225,7 @@ def test_throughput_chart_uses_custom_x_title():
             'HOTA_HOTA': 0.80,
         },
         {
-            'system': 'Polytris',
+            'system': 'Tetris',
             'dataset': 'demo',
             'classifier': 'ShuffleNet05',
             'sample_rate': 1,
@@ -377,12 +377,12 @@ def test_filter_pareto_per_dataset_minimize_time():
 
 def test_presentation_summary_uses_top_legend_and_single_line_titles():
     df_throughput = pd.DataFrame([
-        {'system': 'Polytris', 'dataset': 'demo', 'classifier': 'ShuffleNet05',
+        {'system': 'Tetris', 'dataset': 'demo', 'classifier': 'ShuffleNet05',
          'sample_rate': 1, 'tracking_accuracy_threshold': pd.NA,
          'relevance_threshold': 0.5, 'tilepadding': 'none',
          'canvas_scale': 1.0, 'tracker': 'bytetrackcython',
          'throughput_fps': 100.0, 'time': 1.0, 'HOTA_HOTA': 0.80},
-        {'system': 'Polytris (-Sampling)', 'dataset': 'demo', 'classifier': 'ShuffleNet05',
+        {'system': 'Tetris (-Sampling)', 'dataset': 'demo', 'classifier': 'ShuffleNet05',
          'sample_rate': 1, 'tracking_accuracy_threshold': pd.NA,
          'relevance_threshold': 0.5, 'tilepadding': 'none',
          'canvas_scale': 1.0, 'tracker': 'bytetrackcython',
