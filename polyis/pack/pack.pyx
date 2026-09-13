@@ -54,10 +54,10 @@ cdef extern from "c/utilities.h":
 # Declare C structures from pack.h
 cdef extern from "c/pack.h":
     # Declare the main packing function
-    CollageArray* pack_ "pack" (PolyominoArray **polyominoes_arrays, int num_arrays, int h, int w, int mode)
+    CollageArray* pack_ "pack" (PolyominoArray **polyominoes_arrays, int num_arrays, int h, int w, int mode) noexcept nogil
 
     # Cleanup functions
-    void CollageArray_cleanup(CollageArray *list)
+    void CollageArray_cleanup(CollageArray *list) noexcept nogil
 
 
 # Python class for PolyominoPosition (matches Python implementation)
@@ -121,8 +121,9 @@ def pack(cnp.uint64_t[:] polyominoes_stacks, int h, int w, int mode) -> list[lis
     for i in range(num_arrays):
         arrays_ptr[i] = <PolyominoArray*>polyominoes_stacks[i]  # type: ignore
 
-    # Call the C packing function
-    result = pack_(arrays_ptr, num_arrays, h, w, mode)
+    # Call the C packing function without holding the Python GIL.
+    with nogil:
+        result = pack_(arrays_ptr, num_arrays, h, w, mode)
     free(<void*>arrays_ptr)
 
     if result == NULL:  # type: ignore

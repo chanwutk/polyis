@@ -56,11 +56,11 @@ cdef extern from "c/group_tiles.h":
         int16_t width,
         int16_t height,
         int8_t tilepadding_mode
-    )
+    ) noexcept nogil
 
     # Free a polyomino array allocated by group_tiles
     # Returns the number of polyominoes that were freed
-    int free_polyomino_array_ "free_polyomino_array" (PolyominoArray *polyomino_array)
+    int free_polyomino_array_ "free_polyomino_array" (PolyominoArray *polyomino_array) noexcept nogil
 
 
 @cython.boundscheck(False)  # type: ignore
@@ -89,7 +89,9 @@ def group_tiles(cnp.uint8_t[:, :] bitmap_input, int8_t mode) -> np.uint64:
     cdef int16_t height = <int16_t>bitmap_input.shape[0]
     cdef int16_t width = <int16_t>bitmap_input.shape[1]
     cdef uint8_t* bitmap_ptr = &bitmap_input[0, 0]  # type: ignore
-    cdef PolyominoArray* result_ptr = group_tiles_(bitmap_ptr, width, height, mode)
+    cdef PolyominoArray* result_ptr
+    with nogil:
+        result_ptr = group_tiles_(bitmap_ptr, width, height, mode)
     return np.uint64(<cnp.uint64_t>result_ptr)
 
 
@@ -103,4 +105,7 @@ def free_polyomino_array(cnp.uint64_t polyomino_array_addr) -> int:
     Parameters:
         polyomino_array: Memory address as numpy.uint64, int, or compatible type
     """
-    return free_polyomino_array_(<PolyominoArray*>polyomino_array_addr)
+    cdef int freed
+    with nogil:
+        freed = free_polyomino_array_(<PolyominoArray*>polyomino_array_addr)
+    return freed

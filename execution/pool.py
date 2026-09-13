@@ -1,4 +1,4 @@
-"""Process pool spawner with fan-out / fan-in relay threads.
+"""Worker pool spawners with fan-out / fan-in relay threads.
 
 Multi-consumer queues break the simple ``None`` shutdown sentinel pattern:
 only one consumer ever sees the single ``None``, leaving the rest blocked.
@@ -18,8 +18,9 @@ single-producer-single-consumer interface from the outside.
 from __future__ import annotations
 
 import multiprocessing as mp
+import queue
 import threading
-from typing import Any, Callable
+from typing import Callable
 
 
 def _fan_out_relay(upstream_q, pool_in_q: mp.Queue, num_workers: int) -> None:
@@ -75,6 +76,48 @@ def spawn_pool(
         )
         p.start()
         workers.append(p)
+
+    fan_out_t = threading.Thread(
+        target=_fan_out_relay,
+        args=(upstream_q, pool_in_q, num_workers),
+        daemon=True,
+        name=f'{name}-fanout',
+    )
+    fan_in_t = threading.Thread(
+        target=_fan_in_relay,
+        args=(pool_out_q, downstream_q, num_workers),
+        daemon=True,
+        name=f'{name}-fanin',
+    )
+    fan_out_t.start()
+    fan_in_t.start()
+
+    return workers, pool_in_q, pool_out_q, [fan_out_t, fan_in_t]
+
+
+def spawn_thread_pool(
+    *,
+    name: str,
+    worker_target: Callable,
+    worker_args: tuple,
+    num_workers: int,
+    upstream_q,
+    downstream_q,
+) -> tuple[list[threading.Thread], queue.Queue, queue.Queue, list[threading.Thread]]:
+    """Spawn ``num_workers`` worker threads wired through relay threads."""
+    pool_in_q: queue.Queue = queue.Queue()
+    pool_out_q: queue.Queue = queue.Queue()
+
+    workers: list[threading.Thread] = []
+    for i in range(num_workers):
+        t = threading.Thread(
+            target=worker_target,
+            args=(pool_in_q, pool_out_q, *worker_args),
+            daemon=True,
+            name=f'{name}-{i}',
+        )
+        t.start()
+        workers.append(t)
 
     fan_out_t = threading.Thread(
         target=_fan_out_relay,

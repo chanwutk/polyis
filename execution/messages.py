@@ -1,8 +1,9 @@
 """NamedTuple message types for queues between pipeline stages.
 
-Messages carry small Python objects only; large data (frames, canvases) lives
-in shared memory referenced by name via :class:`ShmRef`.  Sentinel ``None``
-on any queue signals shutdown to that stage.
+The execution runner treats one video as the pipeline unit.  Large arrays stay
+inside the main process unless they cross the prune process boundary; prune
+messages intentionally carry classifications only, not decoded frames.
+Sentinel ``None`` on any queue signals shutdown to that stage.
 """
 
 from __future__ import annotations
@@ -12,49 +13,39 @@ from typing import NamedTuple
 import numpy as np
 
 
-class ShmRef(NamedTuple):
-    """Reference to a shared memory block (uint8) by name + shape."""
-    name: str
-    shape: tuple[int, ...]
-
-
-class VideoStart(NamedTuple):
-    """Decoder -> Classify, beginning of a new video."""
+class DecodedVideo(NamedTuple):
+    """Decoder -> Classify, all frames needed for one video."""
     video: str
-    frame_shm: ShmRef
+    frames_rgb: np.ndarray
     width: int
     height: int
     frame_count: int
     sampled_indices: list[int]
     buffer_frame_indices: list[int]
-
-
-class FrameBatch(NamedTuple):
-    """Decoder -> Classify, one batch of frames ready for inference."""
-    video: str
     batch_positions: list[int]
     prev_positions: list[int]
 
 
-class VideoEnd(NamedTuple):
-    """Decoder -> Classify, end of stream for a video."""
+class ClassifiedVideo(NamedTuple):
+    """Classify/Prune -> Compress, with decoded frames for in-process stages."""
     video: str
-
-
-class VideoClassifications(NamedTuple):
-    """Classify -> Prune (or directly Compress when prune is bypassed).
-
-    Carries all per-frame classification grids plus the frame buffer reference
-    so Compress workers can attach to the same frames.
-    """
-    video: str
-    classifications: list[dict]
-    frame_shm: ShmRef
+    classifications: np.ndarray
+    frames_rgb: np.ndarray
     width: int
     height: int
     frame_count: int
     sampled_indices: list[int]
     buffer_frame_indices: list[int]
+
+
+class VideoClassifications(NamedTuple):
+    """Classify -> Prune and Prune -> main-process joiner."""
+    video: str
+    classifications: np.ndarray
+    width: int
+    height: int
+    frame_count: int
+    sampled_indices: list[int]
 
 
 class CollageReady(NamedTuple):
@@ -63,21 +54,11 @@ class CollageReady(NamedTuple):
     collage_idx: int
     total_collages: int
     is_last: bool
-    canvas_shm: ShmRef
+    canvas_rgb: np.ndarray
     index_map: np.ndarray
     offset_lookup: list
     num_frames: int
     tile_size: int
-
-
-class VideoCompressDone(NamedTuple):
-    """Compress -> Main, signal that this worker emitted the last collage.
-
-    Main process unlinks the frame shared memory and releases the
-    max-videos-in-flight semaphore on receipt.
-    """
-    video: str
-    frame_shm_name: str
 
 
 class VideoDetections(NamedTuple):
@@ -91,17 +72,3 @@ class TrackingResult(NamedTuple):
     """Track -> Main, final tracker output for one video."""
     video: str
     frame_tracks: dict[int, list[list[float]]]
-
-
-class PipelineError(NamedTuple):
-    """Any worker -> error_q on unhandled exception."""
-    stage: str
-    video: str | None
-    traceback: str
-
-
-class StageTiming(NamedTuple):
-    """Per-task duration sample emitted by any stage worker for aggregation."""
-    stage: str
-    video: str
-    duration_ms: float

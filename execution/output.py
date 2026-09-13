@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import json
 import os
-from collections import defaultdict
-from dataclasses import asdict
-from typing import Iterable
 
 from polyis.io import cache
 from polyis.utilities import build_param_str, save_tracking_results
 
 from execution.config import PipelineConfig
-from execution.messages import StageTiming, TrackingResult
+from execution.messages import TrackingResult
 
 
 def _output_param_str(config: PipelineConfig) -> str:
@@ -49,25 +46,15 @@ def save_pipeline_runtime(
     config: PipelineConfig,
     elapsed_ms: float,
     num_videos: int,
-    timings: Iterable[StageTiming],
     per_video_complete_ts: dict[str, float],
 ) -> str:
     """Write the aggregated pipeline runtime summary; return the file path."""
-    # Sum per-stage worker-active time across all videos.
-    per_stage_total_ms: dict[str, float] = defaultdict(float)
-    per_stage_video_count: dict[str, int] = defaultdict(int)
-    for t in timings:
-        per_stage_total_ms[t.stage] += t.duration_ms
-        per_stage_video_count[t.stage] += 1
-
     param_str = _output_param_str(config)
     summary = {
         'config': {**{k: getattr(config, k) for k in config.__dataclass_fields__.keys()}},
         'param_str': param_str,
         'elapsed_ms': elapsed_ms,
         'num_videos': num_videos,
-        'per_stage_active_ms': dict(per_stage_total_ms),
-        'per_stage_video_count': dict(per_stage_video_count),
         'per_video_complete_ts': per_video_complete_ts,
     }
 

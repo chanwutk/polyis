@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import os
-import queue
 import threading
 
 import numpy as np
 import pytest
 
 from execution.config import PipelineConfig
-from execution.messages import ShmRef, VideoClassifications
+from execution.messages import VideoClassifications
 from execution.prune_stage import prune_worker
 
 from polyis.io import cache
@@ -40,23 +39,18 @@ def _build_config_with_prune() -> PipelineConfig:
         prune_workers=1,
         compress_workers=1,
         max_videos_in_flight=1,
+        classify_batch_size=16,
+        detect_batch_size=4,
         no_interpolate=False,
         warmup=False,
     )
 
 
-def _make_synthetic_classifications(num_frames: int, grid_h: int, grid_w: int) -> list[dict]:
+def _make_synthetic_classifications(num_frames: int, grid_h: int, grid_w: int) -> np.ndarray:
     """Build VideoClassifications entries with a few relevant tiles per frame."""
-    classifications: list[dict] = []
+    classifications = np.zeros((num_frames, grid_h, grid_w), dtype=np.uint8)
     for idx in range(num_frames):
-        # Mark a single tile relevant in each frame.
-        grid = np.zeros((grid_h, grid_w), dtype=np.uint8)
-        grid[grid_h // 2, grid_w // 2] = 255
-        classifications.append({
-            'classification_size': (grid_h, grid_w),
-            'classification_hex': grid.flatten().tobytes().hex(),
-            'idx': idx,
-        })
+        classifications[idx, grid_h // 2, grid_w // 2] = 255
     return classifications
 
 
@@ -82,22 +76,18 @@ def test_prune_worker_round_trip():
     msg = VideoClassifications(
         video='va00.mp4',
         classifications=_make_synthetic_classifications(num_frames, grid_h, grid_w),
-        frame_shm=ShmRef(name='nonexistent', shape=(1, 1, 1, 3)),  # not used by prune
         width=grid_w * config.tile_size,
         height=grid_h * config.tile_size,
         frame_count=num_frames,
         sampled_indices=list(range(num_frames)),
-        buffer_frame_indices=list(range(num_frames)),
     )
 
     in_q: mp.Queue = mp.Queue()
     out_q: mp.Queue = mp.Queue()
-    error_q: mp.Queue = mp.Queue()
-    timings_q: mp.Queue = mp.Queue()
 
     t = threading.Thread(
         target=prune_worker,
-        args=(in_q, out_q, config, error_q, timings_q),
+        args=(in_q, out_q, config),
         daemon=True,
     )
     t.start()
@@ -109,11 +99,9 @@ def test_prune_worker_round_trip():
     assert isinstance(result, VideoClassifications)
     assert result.video == 'va00.mp4'
     # Pruning is a per-tile selection; the result should preserve frame count.
-    assert len(result.classifications) == num_frames
-    # And the same shm reference + metadata are passed through.
-    assert result.frame_shm.name == 'nonexistent'
+    assert result.classifications.shape[0] == num_frames
+    # And the same metadata is passed through.
     assert result.width == grid_w * config.tile_size
 
     assert out_q.get(timeout=5) is None
     t.join(timeout=5)
-    assert error_q.empty()

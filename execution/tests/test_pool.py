@@ -116,3 +116,37 @@ def test_spawn_pool_round_trip():
     for r in relays:
         r.join(timeout=5)
         assert not r.is_alive()
+
+
+def test_spawn_thread_pool_round_trip():
+    """spawn_thread_pool wires upstream -> N worker threads -> downstream."""
+    upstream: _queue.Queue = _queue.Queue()
+    downstream: _queue.Queue = _queue.Queue()
+
+    workers, _, _, relays = pool_mod.spawn_thread_pool(
+        name='thread-test',
+        worker_target=_echo_plus_one_worker,
+        worker_args=(),
+        num_workers=2,
+        upstream_q=upstream,
+        downstream_q=downstream,
+    )
+
+    for v in [1, 2, 3]:
+        upstream.put(v)
+    upstream.put(None)
+
+    seen: list[int] = []
+    while True:
+        msg = downstream.get(timeout=10)
+        if msg is None:
+            break
+        seen.append(msg)
+    assert sorted(seen) == [2, 3, 4]
+
+    for w in workers:
+        w.join(timeout=5)
+        assert not w.is_alive()
+    for r in relays:
+        r.join(timeout=5)
+        assert not r.is_alive()

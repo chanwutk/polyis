@@ -7,7 +7,6 @@ entry per frame.
 
 from __future__ import annotations
 
-import multiprocessing as mp
 import queue
 import threading
 
@@ -36,6 +35,8 @@ def _build_config() -> PipelineConfig:
         prune_workers=1,
         compress_workers=1,
         max_videos_in_flight=1,
+        classify_batch_size=16,
+        detect_batch_size=4,
         no_interpolate=True,
         warmup=False,
     )
@@ -45,8 +46,6 @@ def test_track_stage_emits_tracking_result(tmp_path):
     """A VideoDetections in -> a TrackingResult out, with matching video name."""
     in_q: queue.Queue = queue.Queue()
     out_q: queue.Queue = queue.Queue()
-    error_q: mp.Queue = mp.Queue()
-    timings_q: mp.Queue = mp.Queue()
     config = _build_config()
 
     # Synthetic detections: 3 frames, one bbox per frame moving rightward.
@@ -65,7 +64,7 @@ def test_track_stage_emits_tracking_result(tmp_path):
         target=track_stage,
         kwargs=dict(
             in_queue=in_q, out_queue=out_q,
-            config=config, error_q=error_q, timings_q=timings_q,
+            config=config,
         ),
         daemon=True,
     )
@@ -83,5 +82,3 @@ def test_track_stage_emits_tracking_result(tmp_path):
     # Shutdown sentinel comes through.
     assert out_q.get(timeout=5) is None
     t.join(timeout=5)
-    # No errors.
-    assert error_q.empty()

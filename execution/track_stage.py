@@ -8,8 +8,6 @@ order, and emits ``TrackingResult`` for each completed video.
 from __future__ import annotations
 
 import queue
-import time
-import traceback
 
 import numpy as np
 
@@ -21,8 +19,6 @@ from polyis.utilities import (
 
 from execution.config import PipelineConfig
 from execution.messages import (
-    PipelineError,
-    StageTiming,
     TrackingResult,
     VideoDetections,
 )
@@ -33,43 +29,20 @@ def track_stage(
     in_queue: queue.Queue,
     out_queue: queue.Queue,
     config: PipelineConfig,
-    error_q,
-    timings_q,
 ):
     """Main loop of the track thread."""
-    current_video: str | None = None
-    try:
-        while True:
-            msg = in_queue.get()
-            if msg is None:
-                out_queue.put(None)
-                return
+    while True:
+        msg = in_queue.get()
+        if msg is None:
+            out_queue.put(None)
+            return
 
-            assert isinstance(msg, VideoDetections)
-            current_video = msg.video
-            start_ns = time.time_ns()
-            frame_tracks = _track_one_video(msg, config)
-            out_queue.put(TrackingResult(
-                video=msg.video,
-                frame_tracks=frame_tracks,
-            ))
-            if timings_q is not None:
-                dur_ms = (time.time_ns() - start_ns) / 1e6
-                timings_q.put(StageTiming(
-                    stage='track',
-                    video=msg.video,
-                    duration_ms=dur_ms,
-                ))
-            current_video = None
-
-    except BaseException:
-        error_q.put(PipelineError(
-            stage='track',
-            video=current_video,
-            traceback=traceback.format_exc(),
+        assert isinstance(msg, VideoDetections)
+        frame_tracks = _track_one_video(msg, config)
+        out_queue.put(TrackingResult(
+            video=msg.video,
+            frame_tracks=frame_tracks,
         ))
-        out_queue.put(None)
-        return
 
 
 def _track_one_video(

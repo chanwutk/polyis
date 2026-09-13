@@ -32,6 +32,8 @@ class PipelineConfig:
     prune_workers: int
     compress_workers: int
     max_videos_in_flight: int
+    classify_batch_size: int
+    detect_batch_size: int
 
     # ---- Behavior flags ----
     no_interpolate: bool
