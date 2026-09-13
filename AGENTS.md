@@ -54,10 +54,10 @@ FOR EACH STAGE OF REVIEW: output the explanation and pros and cons of each stage
 # Repository Guidelines
 
 ## Executing commands
-- This environment is a local MacBook used for editing only. Code runs on a remote SSH server (`ace`).
-- To test any code changes: first sync with `./sync`, then run on the remote via `ssh ace`.
-- On the remote, execute commands inside the Docker container using `docker exec polyis`.
-- Read and write tool calls may be executed directly on this local machine without syncing.
+- This environment is the `ace` server; the repository here is the source of truth.
+- Run commands inside the Docker container with `docker exec polyis` (or `./dock` for an interactive shell).
+- Pipeline scripts: `./run scripts/<name>.py`.
+- Commit and push to GitHub from this machine.
 
 ## Execution Pipeline (scripts/)
 - Primary entrypoint: scripts in `scripts/` run the full pipeline; numeric prefixes define order.
