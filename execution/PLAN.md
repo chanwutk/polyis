@@ -155,10 +155,12 @@ ship with the fixes they pin rather than as a trailing pass.
   the quick command and `-m requires_artifacts` is the full one:
   `test_integration_smoke.py:51-54`, `test_prune_stage.py:67-68`,
   `test_validation.py:83-86`.
-- Write the missing `tracking.scripts.jsonl` baseline generation.
-  `test_validation.py:8` claims it is "produced by the test fixture", but no
-  such fixture exists — so the only test verifying that `execution/` still
-  agrees with `scripts/p060` has never run.
+- Script the `tracking.scripts.jsonl` baseline generation. `test_validation.py:8`
+  claims it is "produced by the test fixture", but no such fixture exists: the
+  baseline on `ace` was created by hand and cannot be reproduced elsewhere.
+  The test itself is **not** dead — verified 2026-09-12 on `ace`, all three
+  videos pass within tolerance, so `execution/` does currently agree with
+  `scripts/p060`. The gap is reproducibility, not coverage.
 - Update `DESIGN.md` §7, which lists all eight test files as "Important tests"
   without noting that three do not run by default.
 
@@ -204,3 +206,28 @@ Both items need the container and the dataset artifacts.
   `track_stage.py:53` costs nothing.
 - `pack.c` frees its own internal `candidates` buffer; the leak in #8 is
   strictly the caller-owned input arrays.
+
+
+---
+
+## 5. Environment state on `ace` (verified 2026-09-12)
+
+- Container `polyis` is up; Python 3.13.12, `/polyis`, `/polyis-data`,
+  `/polyis-cache` all mounted; 8 GPUs visible.
+- **Cython is rebuilt.** `python setup.py build_ext --inplace` (there is no
+  `lib/` directory and no `build.sh`; `AGENTS.md` is stale on this point).
+  Verified in the generated C that `pack()` is wrapped in
+  `PyEval_SaveThread()` / `PyEval_RestoreThread()`, so the `nogil` work is
+  genuinely in effect and item #3 can now be measured.
+- **`loginctl enable-linger` is now on.** Without it the rootless Docker
+  daemon was torn down whenever the last SSH session ended, killing the
+  container with exit 255. This was the cause of the intermittent
+  "Cannot connect to the Docker daemon" errors.
+- **Test baseline: 1 failed, 19 passed** (`pytest execution/tests`, 86s).
+  The single failure is `test_prune_stage.py::test_prune_worker_round_trip`
+  raising `GRBstartenv failed — check Gurobi license`. The mounted license is
+  a WLS (server-validated) file dated March 2026; token checkout is failing.
+  **Prune cannot run until that licence is renewed**, which also blocks
+  item #13 and any end-to-end run with pruning enabled.
+- `test_validation.py` and `test_integration_smoke.py` both pass here; they
+  skip on a machine without the dataset artifacts.

@@ -79,14 +79,14 @@ FOR EACH STAGE OF REVIEW: output the explanation and pros and cons of each stage
 ## Project Structure & Module Organization
 - `scripts/`: End-to-end pipeline steps, ordered by numeric prefixes.
 - `modules/`: Submodule dependencies vendored for reproducibility (e.g., Detectron2, TrackEval, Darknet).
-- `lib/`: Cython implementations of performance‑critical algorithms (`pack_append.pyx`, `group_tiles.pyx`) plus tests under `lib/tests/`.
+- `polyis/pack/`: Cython implementations of performance‑critical algorithms (`group_tiles.pyx`, `pack.pyx`, `adapters.pyx`) plus `polyis/pack/cython/`; tests live under `tests/pack/`.
 - `polyis/`: Core system components and utilities used by scripts (`images.py`, `utils.py`).
 - `assets/`, `output/`, `pipeline-stages/`, `detection_experiments/`: Data, results, and experiment artifacts.
 
 ## Build, Test, and Development Commands
 - Run a script: `./run scripts/p040_exec_detect.py --help` (from outside the container).
-- Build Cython (from `lib/`): `./build.sh` or `python setup.py build_ext --inplace`.
-- Tests: `pytest lib/tests -v` for Cython and fast unit tests.
+- Build Cython (from the repo root): `python setup.py build_ext --inplace`.
+- Tests: `pytest tests -v` for unit tests, `pytest execution/tests -v` for the runner.
 - Local (non‑Docker) setup: `conda env update -f environment.yml` then `pip install -r requirements.txt`.
 
 ## Coding Style & Naming Conventions
@@ -99,9 +99,9 @@ FOR EACH STAGE OF REVIEW: output the explanation and pros and cons of each stage
 - Do not add any comment or any doc-string to the parse_args function and its contents.
 
 ## Testing Guidelines
-- Framework: `pytest`. Place new tests alongside targets or under `lib/tests/` as `test_*.py`.
+- Framework: `pytest`. Place new tests alongside targets or under `tests/` as `test_*.py`.
 - Prioritize fast unit tests for Cython boundaries; mock external dependencies.
-- Example: `pytest lib/tests/test_pack_append.py -q`.
+- Example: `pytest tests/pack -q`.
 
 ## Commit & Pull Request Guidelines
 - Conventional Commits: `feat(scripts): ...`, `refactor(lib): ...`, `perf: ...`, `chore: ...`.
