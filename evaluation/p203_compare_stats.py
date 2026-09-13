@@ -20,6 +20,15 @@ DETAIL_THRESHOLDS = DEFAULT_THRESHOLDS
 PRIOR_SYSTEMS = ['otif', 'leap']
 OUTPUT_DIR = os.path.join('paper', 'figures', 'generated')
 OUTPUT_TEX_PATH = os.path.join(OUTPUT_DIR, 'p203_compare_stats.tex')
+DATASET_DISPLAY_NAMES = {
+    'caldot1-y05': 'CalDoT1',
+    'caldot2-y05': 'CalDoT2',
+    'ams-y05': 'Amsterdam',
+    'jnc0': 'B3D1',
+    'jnc2': 'B3D2',
+    'jnc6': 'B3D3',
+    'jnc7': 'B3D4',
+}
 THRESHOLD_SUFFIX_BY_PERCENT = {
     1: 'OnePct',
     2: 'TwoPct',
@@ -866,6 +875,7 @@ def format_dominance_summary_for_cli(summary_df: pd.DataFrame) -> pd.DataFrame:
 def save_tex_macros(
     summary_df: pd.DataFrame,
     dominance_detail_df: pd.DataFrame,
+    polytris_pareto_df: pd.DataFrame,
     output_path: str,
 ) -> None:
     """Save threshold summary values plus the max-HOTA-delta dominance macros as TeX macros."""
@@ -938,6 +948,79 @@ def save_tex_macros(
         f.write(
             f'\\newcommand{{\\compareMaxHotaImprovementFps}}{{'
             f'\\autogen{{{prior_fps_floor}}}}}\n'
+        )
+
+        # Emit the display name of the dataset where the max HOTA delta occurs for the paper prose.
+        best_dataset = str(best_row['dataset'])
+        f.write(
+            f'\\newcommand{{\\compareMaxHotaImprovementDataset}}{{'
+            f'\\autogen{{{DATASET_DISPLAY_NAMES.get(best_dataset, best_dataset)}}}}}\n'
+        )
+
+        # Split the dominance detail into reachable and unreachable prior configurations.
+        unreachable_df = dominance_detail_df[dominance_detail_df['hota_delta'].isna()]
+
+        # Count unreachable prior configurations whose own HOTA is exactly zero.
+        zero_hota_count = int((unreachable_df['prior_hota'] == 0.0).sum())
+
+        # Resolve the single non-zero-HOTA unreachable prior configuration for the paper prose.
+        nonzero_unreachable_df = unreachable_df[unreachable_df['prior_hota'] > 0.0]
+        assert len(nonzero_unreachable_df) == 1, (
+            'Expected exactly one non-zero-HOTA unreachable prior configuration; '
+            'update the paper prose if this changes.'
+        )
+        rest_row = nonzero_unreachable_df.iloc[0]
+
+        # Resolve Polytris's fastest Pareto configuration on that same dataset.
+        rest_dataset = str(rest_row['dataset'])
+        dataset_pareto_df = polytris_pareto_df[polytris_pareto_df['dataset'] == rest_dataset]
+        fastest_row = dataset_pareto_df.loc[dataset_pareto_df[THROUGHPUT_COL].idxmax()]
+
+        # Compute the prior point's speedup and HOTA drop relative to that fastest configuration.
+        rest_speedup = float(rest_row['prior_throughput_fps']) / float(fastest_row[THROUGHPUT_COL])
+        rest_hota_drop = float(fastest_row[ACCURACY_COL]) - float(rest_row['prior_hota'])
+
+        # Compute the smallest per-dataset maximum HOTA gain among reachable comparisons.
+        per_dataset_max_gain_min = float(
+            reachable_df.groupby('dataset')['hota_delta'].max().min()
+        )
+
+        # Emit the matched-throughput dominance macros for the paper prose.
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputPriorConfigCount}}{{'
+            f'\\autogen{{{len(dominance_detail_df)}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputReachableCount}}{{'
+            f'\\autogen{{{len(reachable_df)}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputUnreachableCount}}{{'
+            f'\\autogen{{{len(unreachable_df)}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputUnreachableZeroHotaCount}}{{'
+            f'\\autogen{{{zero_hota_count}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputUnreachableRestDataset}}{{'
+            f'\\autogen{{{DATASET_DISPLAY_NAMES.get(rest_dataset, rest_dataset)}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputUnreachableRestSpeedup}}{{'
+            f'\\autogen{{{rest_speedup:.1f}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputUnreachableRestHotaDrop}}{{'
+            f'\\autogen{{{rest_hota_drop:.2f}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputMedianHotaGain}}{{'
+            f'\\autogen{{{float(reachable_df["hota_delta"].median()):.2f}}}}}\n'
+        )
+        f.write(
+            f'\\newcommand{{\\compareMatchedTputPerDatasetMaxGainMin}}{{'
+            f'\\autogen{{{per_dataset_max_gain_min:.2f}}}}}\n'
         )
 
 
@@ -1032,7 +1115,7 @@ def main() -> None:
     )
 
     # Save the abstract-ready macros for the paper draft.
-    save_tex_macros(summary_df, dominance_detail_df, OUTPUT_TEX_PATH)
+    save_tex_macros(summary_df, dominance_detail_df, polytris_pareto_df, OUTPUT_TEX_PATH)
     print(f'\nSaved {OUTPUT_TEX_PATH}')
 
 
